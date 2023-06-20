@@ -1,6 +1,6 @@
 # Дипломное задание по курсу «JavaScript-программирование для начинающих»
 
-Ссылка на githubPage: https://vitakon.github.io/js-cp-diploma-edited/
+Ссылка на githubPage: https://vitakon.github.io/js-cp-diploma-edited-2/
 
 
 ## Создание «информационной системы для предварительного бронирования билетов».

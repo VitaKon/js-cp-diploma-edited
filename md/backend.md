@@ -1,7 +1,7 @@
 # API сервиса
 
 ### Базовый URL АПИ:
-[https://jscp-diplom.netoserver.ru/](https://jscp-diplom.netoserver.ru/)
+[http://f0769682.xsph.ru/](http://f0769682.xsph.ru/)
 
 ### Ответы API
 Ответы API  приходят в формате JSON
@@ -11,7 +11,7 @@
 
 При отправке запросов используйте следующие параметры:
 
-* ***Адрес (URL)*** - `https://jscp-diplom.netoserver.ru/`
+* ***Адрес (URL)*** - [http://f0769682.xsph.ru/](http://f0769682.xsph.ru/)
 * ***Метод (Method)*** - `POST`
 *  ***HTTP заголовок (HttpRequest)***
 

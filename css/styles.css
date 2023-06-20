@@ -11,7 +11,6 @@ html {
 }
 
 body {
-  min-width: 320px;
   background-image: url("../i/background.jpg");
   background-size: cover;
   background-attachment: fixed;
@@ -119,7 +118,7 @@ body {
   content: '';
   display: block;
   position: absolute;
-  right: -0.7rem;
+  right: -1.46rem;
   top: -3rem;
   border: 1.5rem solid transparent;
   border-bottom: 0 solid transparent;
@@ -185,7 +184,6 @@ body {
   font-size: 1.4rem;
   background-color: #16A6AF;
   color: #FFFFFF;
-  cursor: pointer;
 }
 
 .buying {
@@ -236,14 +234,7 @@ body {
 .conf-step {
   text-align: center;
   background-color: #171D24;
-  padding: 1.5rem 3rem 1.5rem;
-}
-
-@media (max-width: 344px) {
-  .conf-step {
-    padding-left: 0;
-    padding-right: 0;
-  }
+  padding: 1.5rem 2rem 1.5rem;
 }
 
 .conf-step__wrapper {
@@ -414,10 +405,13 @@ body {
 }
 
 .ticket__info-qr {
-  display: block;
+  display: flex;
   margin: 3rem auto 0;
-  width: 20rem;
-  height: 20rem;
+  width: 31.7%;
+  padding: 10px;
+  /* background: white; */
+  justify-content: center;
+  align-items: center;
 }
 
 @media screen and (min-width: 479px) {
@@ -442,30 +436,23 @@ body {
 
 /*================================================================*/
 
- #qrcode > * {
-  width: 100%
- }
+.movie .movie-seances__hall .acceptin-button-disabled {
+ background-color: #888888;
+ pointer-events: none
+}
 
- @media screen and (max-width: 425px) {
-   .movie .movie__info {
-     flex-direction: column;
-   }
+@media (max-width: 768px) {
+  .movie-seances__hall:nth-child(2) {
+    margin-top: 20px; /* отступ , сверху у 1 контейнера зала, когда экран меньше 768px */
+  }
+  .ticket__info-qr {
+    width: 100%; /* Изменяем ширину на 100% при экране меньше 768px */
+  }
+}
 
-   .movie .movie__description {
-     padding-left: 0;
-     margin-bottom: 3rem;
-   }
-
-   .movie .movie__poster {
-     height: auto;
-     width: 50%;
-     margin: auto;
-   }
-
-   .movie .movie__poster .movie__poster-image {
-     height: auto;
-     width: 100%;
-   }
+.acceptin-button:disabled {
+  background-color: #888888;
+  pointer-events: none
  }
 
 

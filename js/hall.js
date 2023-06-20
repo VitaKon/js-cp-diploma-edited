@@ -1,211 +1,141 @@
-"use strict";
+let hallInfo = sessionStorage.getItem("hallInfo");//информация о текущем зале
+let wrapper = document.getElementsByClassName("conf-step__wrapper")[0];//контейнер в котором хранится разметка посадочных мест
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Получение актуальной схемы посадочных мест на выбранный сеанс с учетом уже купленных билетов.
-  // В качестве тела POST запроса передайте строку вида event=get_hallConfig&timestamp=${value1}&hallId=${value2}&seanceId=${value3} Где
+let sum = 0;// цена выбраных мест
 
-  // timestamp - начало сеанса с учетом даты Значение указывается в секундах
-  // hallId - ID зала
-  // seanceId - ID сеанса
+if(hallInfo!=="null"){// если нам сервер прислал разметку то делаем следующиее 
 
-  // Результат
-  // Строка - html разметка которую следует поместить на странице hall.html внутри контейнера с классом conf-step__wrapper(см разметку
+    hallInfo = hallInfo.replace(/\\/g, "");// преобразуем html разметку, которая пришла с сервера
+    hallInfo = hallInfo.replace(/^"|"$/g, '');
+    wrapper.innerHTML = hallInfo;// устанавливаем разметку.
+}
+else {
+    let hallConfig = sessionStorage.getItem("hall_config");// если с сервера пришёл "null", значит на этот сеанс, в этот зал билеты еще никто не купил, у мы из 1 запроса берем разметку
+    if(hallConfig) {
+      wrapper.innerHTML = "";
+      wrapper.innerHTML = hallConfig;
+    }
+}
 
-  // Попытка получить данные сеанса...
-  const dataOfTheSelectedSeance = getJSON("data-of-the-selected-seance");
+let buyingInfoDescription = document.getElementsByClassName("buying__info-description")[0]; //меняем информаци о сеансе, берём данные которые сохраняли в sessionStroage, при запросе на сервер
+buyingInfoDescription.getElementsByClassName("buying__info-title")[0].textContent = sessionStorage.getItem("data-film-name");
+buyingInfoDescription.getElementsByClassName("buying__info-start")[0].textContent  = `Начало сеанса: ${sessionStorage.getItem("data-seance-time")}`;
+buyingInfoDescription.getElementsByClassName("buying__info-hall")[0].textContent = sessionStorage.getItem("data-hall-name");
 
-  const timestamp = +dataOfTheSelectedSeance.seanceTimeStamp / 1000;
-  const hallId = dataOfTheSelectedSeance.hallId;
-  const seanceId = dataOfTheSelectedSeance.seanceId;
-  const requestBodyString = `event=get_hallConfig&timestamp=${timestamp}&hallId=${hallId}&seanceId=${seanceId}`;
+document.getElementsByClassName("conf-step__legend-value price-standart")[0].textContent = sessionStorage.getItem("data-price-standart");
+document.getElementsByClassName("conf-step__legend-value price-vip")[0].textContent = sessionStorage.getItem("data-price-vip");
 
-  // Формируем запрос на сервер (Передаем: 1. строка тела запроса, 2. строка с именем источника запроса для инфо в консоли, 3. какая функция будет вызвана после ответа сервера )
-  createRequest(requestBodyString, "HALL", updateHtmlHall);
-});
+let wrapperChildren = wrapper.children;
 
-function updateHtmlHall(serverResponse) {
-  const response = JSON.parse(serverResponse); // объект
+for(let i =0;i<wrapper.childElementCount; i++ ){ //перебираем каждое место и назначаем на него функцию клика
+    let chairs = wrapperChildren[i].children;
+    for(let j =0; j<chairs.length;j++){
+        chairs[j].onclick = function () {// клик на место
+            if(!this.classList.contains("conf-step__chair_taken")) {// проверяем занято место или нет если не занято , то выбираем или отменяем выбор
+              if(this.classList.toggle("conf-step__chair_selected")){ 
+                if(this.classList.contains("conf-step__chair_standart")) { // добавляем цену за место
+                  sum+= Number(sessionStorage.getItem("data-price-standart"));
+                }
+                else {
+                  sum+= Number(sessionStorage.getItem("data-price-vip"));
+                }
+              }
+              else {
+                if(this.classList.contains("conf-step__chair_standart")) { // добавляем цену за место
+                    sum-= Number(sessionStorage.getItem("data-price-standart"));
+                  }
+                  else {
+                    sum-= Number(sessionStorage.getItem("data-price-vip"));
+                  }
+              }
+              
+            }
+        }
+        chairs[j].addEventListener("mouseenter",function () {// смена указателя при наведении на место
+            this.style.cursor = "pointer";
+        })
+    }
+}
 
-  // Попытка получить данные сеанса...
-  const dataOfTheSelectedSeance = getJSON("data-of-the-selected-seance");
+let buyButton = document.getElementsByClassName("acceptin-button")[0];// кнопка забронировать
+buyButton.addEventListener("mouseenter",function () {// смена указателя при наведении на кнопку
+  this.style.cursor = "pointer";
+})
 
-  // Евгений Варламов — 20.04.2023 22:01
-  // При get_hallConfig  сервер может возвращать null
-  // Если сервер возвращает  null  это значит что в базе не нашлось ни одного проданного билета на данный сеанс.
-  // И следовательно конфигурацию зала следует брать из массива halls который вы получаете при команде update
-  let configSelectedHall;
-  let configHalls = getJSON("config-halls"); // получить и преобразовать из JSON в объект
-  if (response !== null) {
-    console.info("Есть данные в ответе сервера по залу...");
-    configSelectedHall = response; // приходит один зал  виде строки разметки
-  } else {
-    console.info("В зале нет купленных мест...");
-    configSelectedHall = configHalls[dataOfTheSelectedSeance.hallId];
+buyButton.onclick = function () { // отправляем выбранное место 
+  let chairsSelected =Array.from(wrapper.getElementsByClassName("conf-step__chair_selected"));// выбранные места
+  if(chairsSelected.length) {
+    let chair = {}; // объект который хранит ряд и места к этому ряду
+    let saveCurrentBuy = {};// переменная  для информации о покупке на конкретныый сеанс
+    chairsSelected.forEach(e => {  //сортируем какое место к какому ряду
+      let parrent = e.parentElement;
+      let place = null;// место
+      let row = null;// ряд
+      Array.from(parrent.children).forEach((child,index) =>{// определяем ряд и место
+        if(child === e){
+          place = index+1;
+        }
+      })
+      Array.from(parrent.parentElement.children).forEach((eParrent,index) => {
+        if(parrent === eParrent){
+          row = index+1;
+        }
+      })
+      chair[row] ? chair[row].push(place) : chair[row] = [place];// заносим в переменную
+  })
+  
+    saveCurrentBuy["currentBuy"] = 
+    {"data-film-name": sessionStorage.getItem("data-film-name"),
+    "data-hall-name": sessionStorage.getItem("data-hall-name"),
+    "data-seance-time": sessionStorage.getItem("data-seance-time"),
+    "data-seance-id" : sessionStorage.getItem("data-seance-id"),
+    "cost": sum,
+    "chair": chair
+    }
+
+    sessionStorage.setItem(sessionStorage.getItem("data-seance-id"),JSON.stringify(saveCurrentBuy));// сохраняем
+
+    let data = `event=sale_add&timestamp=${sessionStorage.getItem("data-seance-timestamp")}&hallId=${sessionStorage.getItem("data-hall-id")}&seanceId=${sessionStorage.getItem("data-seance-id")}&hallConfiguration=${wrapper.innerHTML}`;
+    request(()=> {
+      chairsSelected.forEach(e => {
+        e.classList.toggle("conf-step__chair_selected");
+        e.classList.toggle("conf-step__chair_taken");
+        })
+      sessionStorage.setItem("hallInfo",wrapper.innerHTML);
+      window.location.href = "payment.html";// переходим на след стр 
+    },data);
+  }
+  else{
+    alert("вы не выбрали место(а)");
   }
 
-  const buyingInfoSection = document.querySelector(".buying__info");
-  buyingInfoSection.innerHTML = "";
+  
+}
 
-  const textHtml = `
-  <div class="buying__info-description">
-    <h2 class="buying__info-title">"${dataOfTheSelectedSeance.filmName}"</h2>
-    <p class="buying__info-start">Начало сеанса: ${dataOfTheSelectedSeance.seanceTime
-    } </br>
-    ${new Date(+dataOfTheSelectedSeance.seanceTimeStamp).toLocaleDateString(
-      "ru-RU",
-      { day: "2-digit", month: "long", year: "numeric" }
-    )}</p>
-    <p class="buying__info-hall">${dataOfTheSelectedSeance.hallName
-    }</p>          
-  </div>
-  <div class="buying__info-hint">
-    <p>Тапните дважды,<br>чтобы увеличить</p>
-  </div>
-`;
-  buyingInfoSection.insertAdjacentHTML("beforeend", textHtml);
-
-  // Секция со схемой зала
-  // заполняется или из ответа сервера в виде строки-html для выбранного зала, или вытягивается из конфы первого запроса, если нет купленных мест и пришел ответ null
-  const confStep = document.querySelector(".conf-step");
-  const textHtmlConf = `
-  <div class="conf-step__wrapper">
-  ${configSelectedHall}
-  </div>
-`;
-
-  confStep.innerHTML = "";
-  confStep.insertAdjacentHTML("beforeend", textHtmlConf);
-
-  const textHtmlLegend = `
-    <div class="conf-step__legend">
-    <div class="col">
-      <p class="conf-step__legend-price"><span class="conf-step__chair conf-step__chair_standart"></span> Свободно (<span
-          class="conf-step__legend-value price-standart">${dataOfTheSelectedSeance.priceStandart}</span>руб)</p>
-      <p class="conf-step__legend-price"><span class="conf-step__chair conf-step__chair_vip"></span> Свободно VIP (<span
-          class="conf-step__legend-value price-vip">${dataOfTheSelectedSeance.priceVip}</span>руб)</p>
-    </div>
-    <div class="col">
-      <p class="conf-step__legend-price"><span class="conf-step__chair conf-step__chair_taken"></span> Занято</p>
-      <p class="conf-step__legend-price"><span class="conf-step__chair conf-step__chair_selected"></span> Выбрано</p>
-    </div>
-  </div>
-`;
-  confStep.insertAdjacentHTML("beforeend", textHtmlLegend);
-
-  const selectedChairs = [];
-
-  // Клик по месту на схеме зала
-  const confStepChair = document.querySelectorAll(
-    ".conf-step__wrapper .conf-step__chair"
-  );
-
-  confStepChair.forEach((element) => {
-    element.addEventListener("click", (event) => {
-      // currentTarget — указывает на элемент, на котором установлен обработчик события.
-      const elementClickClassList = event.currentTarget.classList;
-      if (
-        elementClickClassList.contains("conf-step__chair_disabled") ||
-        elementClickClassList.contains("conf-step__chair_taken")
-      ) {
-        return;
-      }
-      element.classList.toggle("conf-step__chair_selected");
-    });
-  });
-
-  // Клик по кнопке "Забронировать"
-  const acceptinButton = document.querySelector(".acceptin-button");
-
-  acceptinButton?.addEventListener("click", (event) => {
-    event.preventDefault();
-    // 1. Формируем список выбранных мест selectedChairs
-    // 2. Меняем статус выбранных мест с "выбранные" на "занятые"
-    // 3. Сохраняем новую кофигурацию зала ("pre-config-halls") в новом объекте Хранилища
-    // 4. На следующей стринице "после оплаты" - отправляем на сервер измененную схему зала
-    const arrayOfRows = Array.from(
-      document.querySelectorAll(".conf-step__row")
-    );
-
-    for (let indexRow = 0; indexRow < arrayOfRows.length; indexRow++) {
-      const elementRow = arrayOfRows[indexRow];
-      const arrayOfChairs = Array.from(
-        elementRow.querySelectorAll(".conf-step__chair")
-      );
-
-      for (
-        let indexChair = 0;
-        indexChair < arrayOfChairs.length;
-        indexChair++
-      ) {
-        const elementChair = arrayOfChairs[indexChair];
-        if (elementChair.classList.contains("conf-step__chair_selected")) {
-          const typeChair = elementChair.classList.contains(
-            "conf-step__chair_vip"
-          )
-            ? "vip"
-            : "standart";
-
-          selectedChairs.push({
-            row: indexRow + 1,
-            place: indexChair + 1,
-            typeChair: typeChair,
-          });
-        }
-      }
+let buyingInfoHint = document.getElementsByClassName('buying__info-hint')[0];// увеличение блока мест для маленьких экрановв
+let lastTouchEnd = 0;
+let scale = "scale(1.0)";
+let rem = "3rem";
+let marginTop = "0";
+buyingInfoHint.addEventListener('touchend', function(event) {
+  let now = new Date().getTime();
+  if (now - lastTouchEnd <= 300) {
+    if(scale === "scale(1.0)"){
+      scale = "scale(1.2)";
+      rem = "6rem";
+      marginTop = "25px";
     }
-
-    // Если есть выбранные места в зале
-    if (selectedChairs.length) {
-      // Запишем в хранилище выбранные места в зале
-      setJSON("data-of-the-selected-chairs", selectedChairs);
-
-      // Конфигурация (разметка) выбранного зала
-      const configSelectedHallHtml = document
-        .querySelector(".conf-step__wrapper")
-        ?.innerHTML.trim();
-
-      // Запишем выбранные места в конфиг залов в Хранилище
-      configHalls[dataOfTheSelectedSeance.hallId] = configSelectedHallHtml;
-      setJSON("config-halls", configHalls);
-
-      // Подготовим пре-конфигурацию залов с "занятыми" (оплаченными) местами
-      confStepChair.forEach((element) => {
-        element.classList.replace("conf-step__chair_selected", "conf-step__chair_taken");
-      });
-
-      const configSelectedHallTaken = document.querySelector(".conf-step__wrapper")?.innerHTML.trim();
-      const configHallsTaken = getJSON("config-halls");
-
-      // Запишем занятые места в отдельный пре-конфиг залов в Хранилище, после оплаты он отправится на сервер (отдельный, чтобы при нажатии кнопки "Назад" не показываались места "taken", т.к. они еще не оплачены)
-      configHallsTaken[dataOfTheSelectedSeance.hallId] = configSelectedHallTaken;
-      setJSON("pre-config-halls-paid-seats", configHallsTaken);
-
-      // Сформируем набор итоговых данных для заполнения билета на следующих страницах
-      const dataOfTheSelectedChairs = getJSON("data-of-the-selected-chairs");
-
-      // Считаем общую стоимость билетов и формируем строку выбранных мест
-      const arrRowPlace = [];
-      let totalCost = 0;
-
-      dataOfTheSelectedChairs.forEach(element => {
-        arrRowPlace.push(`${element.row}/${element.place}`);
-        totalCost += element.typeChair === "vip" ? +dataOfTheSelectedSeance.priceVip : +dataOfTheSelectedSeance.priceStandart;
-      });
-
-      const strRowPlace = arrRowPlace.join(", ");
-
-      const ticketDetails = {
-        ...dataOfTheSelectedSeance,
-        strRowPlace: strRowPlace,
-        hallNameNumber: dataOfTheSelectedSeance.hallName.slice(3).trim(),
-        seanceTimeStampInSec: +dataOfTheSelectedSeance.seanceTimeStamp / 1000,
-        seanceDay: new Date(+dataOfTheSelectedSeance.seanceTimeStamp).toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric" }),
-        totalCost: totalCost,
-      };
-
-      setJSON("ticket-details", ticketDetails);
-
-      window.location.href = "payment.html";
+    else {
+      scale = "scale(1.0)";
+      rem = "3rem";
+      marginTop = "0";
     }
-  });
-};
+    let confStepWrapper = document.getElementsByClassName("conf-step__wrapper")[0];// увеличиваем
+    let confStepLegend = document.getElementsByClassName("conf-step__legend")[0];//добавляем блоку отступ от увеличенного 
+    confStepLegend.style.paddingTop = rem;
+
+    confStepWrapper.style.transform = scale;
+    confStepWrapper.style.marginTop = marginTop;
+  }
+  lastTouchEnd = now;
+});

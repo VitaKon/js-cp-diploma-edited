@@ -1,54 +1,51 @@
-"use strict";
+let wrap = document.getElementsByClassName("ticket__info-wrapper")[0];// контейнер с информацией
 
-document.addEventListener("DOMContentLoaded", () => {
+let tickets = JSON.parse(sessionStorage.getItem(sessionStorage.getItem("data-seance-id")));
+wrap.getElementsByClassName("ticket__details ticket__title")[0].textContent = tickets.currentBuy["data-film-name"];//имя фильма
 
-  const ticketDetails = getJSON("ticket-details");
+let ticketChairs = wrap.getElementsByClassName("ticket__details ticket__chairs")[0]; // ряд место
+ticketChairs.textContent = "";
+Object.keys(tickets.currentBuy["chair"]).forEach((row,index) => {
+    tickets.currentBuy["chair"][row].forEach((place,index) => {
+        ticketChairs.textContent += `${row}/${place}`;
+        if(tickets.currentBuy["chair"][row].length - 1 > index){
+            ticketChairs.textContent += ", ";
+        }  
+    })
+    if(Object.keys(tickets.currentBuy["chair"]).length - 1 > index){
+        ticketChairs.textContent += ", ";
+    }
+})
+wrap.getElementsByClassName("ticket__details ticket__hall")[0].textContent = tickets.currentBuy["data-hall-name"].substr(tickets.currentBuy["data-hall-name"].length - 1);// номер зала
+wrap.getElementsByClassName("ticket__details ticket__start")[0].textContent = tickets.currentBuy["data-seance-time"]; //начало сеанса
 
-  // Секция ticket__info-wrapper
-  const ticketInfoWrapper = document.querySelector(".ticket__info-wrapper");
-  ticketInfoWrapper.innerHTML = "";
+// Получаем элемент по индексу
+let childElement = wrap.children[3]; // после 3 элемента вставляем qr(0,1,2,3,qr...)
 
-  const textHtml = `
-    <p class="ticket__info">На фильм: <span class="ticket__details ticket__title">${ticketDetails.filmName}</span></p>
-    <p class="ticket__info">Ряд/Место: <span class="ticket__details ticket__chairs">${ticketDetails.strRowPlace}</span></p>
-    <p class="ticket__info">В зале: <span class="ticket__details ticket__hall">${ticketDetails.hallNameNumber}</span></p>
-    <p class="ticket__info">Начало сеанса: <span class="ticket__details ticket__start">${ticketDetails.seanceTime} - ${ticketDetails.seanceDay}</span></p>
+let div = document.createElement("div"); // блок для qr кода
 
-    <div id="qrcode" class="ticket__info-qr"></div>
+document.getElementsByClassName("ticket__info-qr")[0].remove(); // удаляем стандартный qr;
 
-    <p class="ticket__hint">Покажите QR-код нашему контроллеру для подтверждения бронирования.</p>
-    <p class="ticket__hint">Приятного просмотра!</p>
-   `;
-
-  ticketInfoWrapper.insertAdjacentHTML("beforeend", textHtml);
-
-  // QR-код. Функционал находится в файле js/QRCreator.js.
-  // Источник: https://github.com/slesareva-gala/QR-Code
-  const qrText = `
-    Фильм: ${ticketDetails.filmName}
-    Зал: ${ticketDetails.hallNameNumber}
-    Ряд/место: ${ticketDetails.strRowPlace}
-    Дата: ${ticketDetails.seanceDay}
-    Начало сеанса: ${ticketDetails.seanceTime}
-
-    Билет действителен строго на свой сеанс
-    `;
-
-  const qrcode1 = QRCreator(qrText, {
-    mode: 4,
-    eccl: 0,
-    version: -1,
-    mask: -1,
-    image: "png",
-    modsize: 3,
-    margin: 4,
-  });
-
-  const content = (qrcode) => {
-    return qrcode.error
-      ? `недопустимые исходные данные ${qrcode.error}`
-      : qrcode.result;
-  };
-
-  document.getElementById("qrcode").append("", content(qrcode1));
+let textQr = `Фильм: ${tickets.currentBuy["data-film-name"]}\nРяд/Место: ${ticketChairs.textContent}\nЗал: ${tickets.currentBuy["data-hall-name"].substr(tickets.currentBuy["data-hall-name"].length - 1)}\nНачало: ${tickets.currentBuy["data-seance-time"]}`;
+JSON.stringify(textQr);
+// добавляем свой
+let qr = QRCreator(textQr,
+{ mode: 4,
+  eccl: 0,
+  version: 8,
+  mask: 3,
+  image: 'png',
+  modsize: 4,
+  margin: 0
 });
+const content = (qrcode) =>{
+  return qrcode.error ?
+    `недопустимые исходные данные ${qrcode.error}`:
+    qrcode.result;
+};
+div.classList.add("ticket__info-qr");
+let qrCanvas = content(qr);
+qrCanvas.style.padding = "5px";
+qrCanvas.style.background = "white";
+div.appendChild(qrCanvas);// заносим qr в div
+wrap.insertBefore(div, childElement.nextSibling);// после 3 элемента вставляем блок div с qr
